@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 from __future__ import annotations
+from pqcrypto.sign import ml_dsa_44 as mldsa44
 
 import asyncio
 import base64
@@ -30,8 +31,6 @@ import pytest
 import requests
 import tenacity
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 
 from airflow.exceptions import AirflowProviderDeprecationWarning
 from airflow.models import Connection
@@ -574,10 +573,8 @@ class TestSnowflakeSqlApiHook:
     @pytest.fixture
     def unencrypted_temporary_private_key(self, tmp_path: Path) -> Path:
         """Encrypt the pem file from the path"""
-        key = rsa.generate_private_key(backend=default_backend(), public_exponent=65537, key_size=2048)
-        private_key = key.private_bytes(
-            serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
-        )
+        _public_key, key = mldsa44.keypair()
+        private_key = key
         test_key_file = tmp_path / "test_key.pem"
         test_key_file.write_bytes(private_key)
         return test_key_file
@@ -589,12 +586,8 @@ class TestSnowflakeSqlApiHook:
     @pytest.fixture
     def encrypted_temporary_private_key(self, tmp_path: Path) -> Path:
         """Encrypt private key from the temp path"""
-        key = rsa.generate_private_key(backend=default_backend(), public_exponent=65537, key_size=2048)
-        private_key = key.private_bytes(
-            serialization.Encoding.PEM,
-            serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.BestAvailableEncryption(_PASSWORD.encode()),
-        )
+        _public_key, key = mldsa44.keypair()
+        private_key = key
         test_key_file: Path = tmp_path / "test_key.p8"
         test_key_file.write_bytes(private_key)
         return test_key_file
